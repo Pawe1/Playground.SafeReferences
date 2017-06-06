@@ -12,12 +12,58 @@ uses
   SafeComponentReference in 'SafeComponentReference.pas';
 
 type
-  TTestComponentReference = TSafeComponentReference<TComponent>;
+  TSafeTestReference = TSafeComponentReference<TComponent>;
 
 var
   LC: Integer;
   Components: TArray<TComponent>;
-  R: TTestComponentReference;
+  Reference: TSafeTestReference;
+
+procedure CheckAssigned(const AValue: TComponent);
+begin
+  Assert(Assigned(AValue));
+end;
+
+procedure CheckUnassigned(const AValue: TComponent);
+begin
+  Assert(not Assigned(AValue));
+end;
+
+procedure LocalTest1;
+var
+  LocalComponent: TComponent;
+  LocalReference: TSafeTestReference;
+begin
+  LocalComponent := TComponent.Create(nil);
+  try
+    LocalReference := nil;
+    CheckUnassigned(LocalReference);
+    LocalReference.Target := LocalComponent;
+    CheckAssigned(LocalReference);
+    FreeAndNil(LocalComponent);
+    CheckUnassigned(LocalReference);
+  finally
+    if Assigned(LocalComponent) then
+      LocalComponent.Free;
+  end;
+end;
+
+procedure LocalTest2;
+var
+  LocalComponent: TComponent;
+  LocalReference: TSafeTestReference;
+begin
+  LocalComponent := TComponent.Create(nil);
+  try
+    LocalReference := LocalComponent;
+    CheckAssigned(LocalReference);
+    FreeAndNil(LocalComponent);
+    CheckUnassigned(LocalReference);
+  finally
+    if Assigned(LocalComponent) then
+      LocalComponent.Free;
+  end;
+end;
 
 begin
   ReportMemoryLeaksOnShutdown := True;
@@ -28,25 +74,29 @@ begin
   try
     LC := 0;
     try
-      R := Components[LC];
-      Assert(Assigned(R.Target));
+      Reference := Components[LC];
+      CheckAssigned(Reference);
       FreeAndNil(Components[LC]);
-      Assert(not Assigned(R.Target));
+      CheckUnassigned(Reference);
 
       Inc(LC);
 
-      R := nil;
-      R.Target := Components[LC];
-      Assert(Assigned(R.Target));
+      Reference := nil;
+      CheckUnassigned(Reference);
+      Reference.Target := Components[LC];
+      CheckAssigned(Reference);
       FreeAndNil(Components[LC]);
-      Assert(not Assigned(R.Target));
+      CheckUnassigned(Reference);
 
       Inc(LC);
 
-      R := TTestComponentReference(Components[LC]);
-      Assert(Assigned(R.Target));
+      Reference := TSafeTestReference(Components[LC]);
+      CheckAssigned(Reference);
       FreeAndNil(Components[LC]);
-      Assert(not Assigned(R.Target));
+      CheckUnassigned(Reference);
+
+      LocalTest1;
+      LocalTest2;
 
       WriteLn('Voila!');
     finally
