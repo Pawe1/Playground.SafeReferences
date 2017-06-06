@@ -5,48 +5,55 @@ program Project1;
 {$R *.res}
 
 uses
+  System.Types,
   System.Classes,
   System.SysUtils,
+  System.Generics.Collections,
   SafeComponentReference in 'SafeComponentReference.pas';
 
 type
   TTestComponentReference = TSafeComponentReference<TComponent>;
 
 var
-  C1: TComponent;
+  LC: Integer;
+  Components: TArray<TComponent>;
   R: TTestComponentReference;
 
 begin
   ReportMemoryLeaksOnShutdown := True;
+
+  for LC := 0 to 2 do
+    Components := Components + [TComponent.Create(nil)];
+
   try
-    C1 := TComponent.Create(nil);
-    R := C1;
-    if not Assigned(R.Target) then
-      Exception.Create('Test failed');
-    C1.Free;
-    if Assigned(R.Target) then
-      Exception.Create('Test failed');
+    LC := 0;
+    try
+      R := Components[LC];
+      Assert(Assigned(R.Target));
+      FreeAndNil(Components[LC]);
+      Assert(not Assigned(R.Target));
 
+      Inc(LC);
 
-    C1 := TComponent.Create(nil);
-    R := nil;
-    R.Target := C1;
-    if not Assigned(R.Target) then
-      Exception.Create('Test failed');
-    C1.Free;
-    if Assigned(R.Target) then
-      Exception.Create('Test failed');
+      R := nil;
+      R.Target := Components[LC];
+      Assert(Assigned(R.Target));
+      FreeAndNil(Components[LC]);
+      Assert(not Assigned(R.Target));
 
+      Inc(LC);
 
-    C1 := TComponent.Create(nil);
-    R := TTestComponentReference(C1);
-    if not Assigned(R.Target) then
-      Exception.Create('Test failed');
-    C1.Free;
-    if Assigned(R.Target) then
-      Exception.Create('Test failed');
+      R := TTestComponentReference(Components[LC]);
+      Assert(Assigned(R.Target));
+      FreeAndNil(Components[LC]);
+      Assert(not Assigned(R.Target));
 
-    WriteLn('Voila!');
+      WriteLn('Voila!');
+    finally
+      for LC := Low(Components) to High(Components) do
+        if Assigned(Components[LC]) then
+          Components[LC].Free;
+    end;
   except
     on E: Exception do
     begin

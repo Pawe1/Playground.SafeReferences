@@ -4,7 +4,6 @@ interface
 
 uses
   System.Classes,
-  Sprinkles.Lifetime,
   Sprinkles.InterfacedComponent;
 
 type
@@ -17,17 +16,16 @@ type
   TSmartComponentReference<T: TComponent> = class(TInterfacedComponent, IComponentReference<T>)
   private
     FTarget: T;
-    FDestructionDetector: TDestructionDetector;
-    procedure HandleTargetDestruction(ASender: TObject; AComponent: TComponent);
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
-    constructor Create(AOwner: TComponent); override;
     function GetTarget: T;
     procedure SetTarget(const AValue: T);
   end;
 
-  TSafeComponentReference<T: TComponent> = record
+  TSafeComponentReference<T: TComponent> = record   // only records support operator overloading
   private
-    FReference: IComponentReference<T>;   // this little workaround is needed because how record constructor works
+    FReference: IComponentReference<T>;   // TInterfacedComponent let us use ARC magic
     function GetTarget: T;
     procedure SetTarget(const ATarget: T);
     function Equals(const AOther: TSafeComponentReference<T>): Boolean;
@@ -37,6 +35,8 @@ type
     constructor Create(const ATarget: T);
     class operator Implicit(const value: TSafeComponentReference<T>): T;
     class operator Implicit(const value: T): TSafeComponentReference<T>;
+    class operator Implicit(value: TSafeComponentReference<T>): Pointer;
+    class operator Implicit(value: TSafeComponentReference<T>): TObject;
     class operator Explicit(const value: TSafeComponentReference<T>): T;
     class operator Equal(const a, b: TSafeComponentReference<T>): Boolean;
     class operator NotEqual(const a, b: TSafeComponentReference<T>): Boolean;
@@ -47,31 +47,27 @@ implementation
 uses
   System.Generics.Defaults;
 
-constructor TSmartComponentReference<T>.Create(AOwner: TComponent);
-begin
-  inherited;
-  FDestructionDetector := TDestructionDetector.Create(Self);
-  FDestructionDetector.OnDestructingDetected := HandleTargetDestruction;
-end;
-
 function TSmartComponentReference<T>.GetTarget: T;
 begin
   Result := FTarget;
 end;
 
-procedure TSmartComponentReference<T>.HandleTargetDestruction(ASender: TObject; AComponent: TComponent);
+procedure TSmartComponentReference<T>.Notification(AComponent: TComponent; Operation: TOperation);
 begin
-  if AComponent = (FTarget as TComponent) then
+  if (Operation = TOperation.opRemove) and (AComponent = (FTarget as TComponent)) then
     FTarget := nil;
+  inherited;
 end;
 
 procedure TSmartComponentReference<T>.SetTarget(const AValue: T);
 begin
   if FTarget <> AValue then
   begin
-    FDestructionDetector.StopObserving(FTarget);
+    if Assigned(FTarget) then
+      FTarget.RemoveFreeNotification(Self);
     FTarget := AValue;
-    FDestructionDetector.StartObserving(FTarget);
+    if Assigned(FTarget) then
+      FTarget.FreeNotification(Self);
   end;
 end;
 
@@ -98,7 +94,7 @@ end;
 
 function TSafeComponentReference<T>.GetTarget: T;
 begin
-  Result := FReference.GetTarget;
+  Result := FReference.Target;
 end;
 
 class operator TSafeComponentReference<T>.Implicit(const value: TSafeComponentReference<T>): T;
@@ -111,6 +107,16 @@ begin
   Result := TSafeComponentReference<T>.Create(value);
 end;
 
+class operator TSafeComponentReference<T>.Implicit(value: TSafeComponentReference<T>): Pointer;
+begin
+  Result := Pointer(value.Target);
+end;
+
+class operator TSafeComponentReference<T>.Implicit(value: TSafeComponentReference<T>): TObject;
+begin
+  Result := value.Target;
+end;
+
 class operator TSafeComponentReference<T>.NotEqual(const a, b: TSafeComponentReference<T>): Boolean;
 begin
   Result := not a.Equals(b);
@@ -118,7 +124,7 @@ end;
 
 procedure TSafeComponentReference<T>.SetTarget(const ATarget: T);
 begin
-  FReference.SetTarget(ATarget);
+  FReference.Target := ATarget;
 end;
 
 end.
