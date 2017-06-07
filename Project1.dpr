@@ -5,10 +5,8 @@ program Project1;
 {$R *.res}
 
 uses
-  System.Types,
   System.Classes,
   System.SysUtils,
-  System.Generics.Collections,
   SafeComponentReference in 'SafeComponentReference.pas';
 
 type
@@ -17,7 +15,7 @@ type
 var
   LC: Integer;
   Components: TArray<TComponent>;
-  Reference: TSafeTestReference;
+  Reference1, Reference2: TSafeTestReference;
 
 procedure CheckAssigned(const AValue: TComponent);
 begin
@@ -32,16 +30,21 @@ end;
 procedure LocalTest1;
 var
   LocalComponent: TComponent;
-  LocalReference: TSafeTestReference;
+  LocalReference1, LocalReference2: TSafeTestReference;
 begin
   LocalComponent := TComponent.Create(nil);
   try
-    LocalReference := nil;
-    CheckUnassigned(LocalReference);
-    LocalReference.Target := LocalComponent;
-    CheckAssigned(LocalReference);
+    LocalReference1 := nil;
+    LocalReference2 := nil;
+    CheckUnassigned(LocalReference1);
+    CheckUnassigned(LocalReference2);
+    LocalReference1.Target := LocalComponent;
+    LocalReference2 := LocalReference1;
+    CheckAssigned(LocalReference1);
+    CheckAssigned(LocalReference2);
     FreeAndNil(LocalComponent);
-    CheckUnassigned(LocalReference);
+    CheckUnassigned(LocalReference1);
+    CheckUnassigned(LocalReference2);
   finally
     if Assigned(LocalComponent) then
       LocalComponent.Free;
@@ -51,14 +54,17 @@ end;
 procedure LocalTest2;
 var
   LocalComponent: TComponent;
-  LocalReference: TSafeTestReference;
+  LocalReference1, LocalReference2: TSafeTestReference;
 begin
   LocalComponent := TComponent.Create(nil);
   try
-    LocalReference := LocalComponent;
-    CheckAssigned(LocalReference);
+    LocalReference1 := LocalComponent;
+    LocalReference2 := LocalReference1;
+    CheckAssigned(LocalReference1);
+    CheckAssigned(LocalReference2);
     FreeAndNil(LocalComponent);
-    CheckUnassigned(LocalReference);
+    CheckUnassigned(LocalReference1);
+    CheckUnassigned(LocalReference2);
   finally
     if Assigned(LocalComponent) then
       LocalComponent.Free;
@@ -74,26 +80,37 @@ begin
   try
     LC := 0;
     try
-      Reference := Components[LC];
-      CheckAssigned(Reference);
+      Reference1 := Components[LC];
+      Reference2 := Reference1;
+      CheckAssigned(Reference2);
+      CheckAssigned(Reference1);
       FreeAndNil(Components[LC]);
-      CheckUnassigned(Reference);
+      CheckUnassigned(Reference1);
+      CheckUnassigned(Reference2);
 
       Inc(LC);
 
-      Reference := nil;
-      CheckUnassigned(Reference);
-      Reference.Target := Components[LC];
-      CheckAssigned(Reference);
+      Reference1 := nil;
+      Reference2 := nil;
+      CheckUnassigned(Reference1);
+      CheckUnassigned(Reference2);
+      Reference1.Target := Components[LC];
+      Reference2 := Reference1;
+      CheckAssigned(Reference1);
+      CheckAssigned(Reference2);
       FreeAndNil(Components[LC]);
-      CheckUnassigned(Reference);
+      CheckUnassigned(Reference1);
+      CheckUnassigned(Reference2);
 
       Inc(LC);
 
-      Reference := TSafeTestReference(Components[LC]);
-      CheckAssigned(Reference);
+      Reference1 := TSafeTestReference(Components[LC]);
+      Reference2 := Reference1;
+      CheckAssigned(Reference1);
+      CheckAssigned(Reference2);
       FreeAndNil(Components[LC]);
-      CheckUnassigned(Reference);
+      CheckUnassigned(Reference1);
+      CheckUnassigned(Reference2);
 
       LocalTest1;
       LocalTest2;

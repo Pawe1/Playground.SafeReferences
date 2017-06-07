@@ -13,7 +13,7 @@ type
     property Target: T read GetTarget write SetTarget;
   end;
 
-  TSmartComponentReference<T: TComponent> = class(TInterfacedComponent, IComponentReference<T>)
+  TSmartReferenceProxy<T: TComponent> = class(TInterfacedComponent, IComponentReference<T>)
   private
     FTarget: T;
   protected
@@ -47,19 +47,19 @@ implementation
 uses
   System.Generics.Defaults;
 
-function TSmartComponentReference<T>.GetTarget: T;
+function TSmartReferenceProxy<T>.GetTarget: T;
 begin
   Result := FTarget;
 end;
 
-procedure TSmartComponentReference<T>.Notification(AComponent: TComponent; Operation: TOperation);
+procedure TSmartReferenceProxy<T>.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   if (Operation = TOperation.opRemove) and (AComponent = (FTarget as TComponent)) then
     FTarget := nil;
   inherited;
 end;
 
-procedure TSmartComponentReference<T>.SetTarget(const AValue: T);
+procedure TSmartReferenceProxy<T>.SetTarget(const AValue: T);
 begin
   if FTarget <> AValue then
   begin
@@ -73,8 +73,8 @@ end;
 
 constructor TSafeComponentReference<T>.Create(const ATarget: T);
 begin
-  FReference := TSmartComponentReference<T>.Create(nil);
-  FReference.SetTarget(ATarget);
+  FReference := TSmartReferenceProxy<T>.Create(nil);
+  FReference.Target := ATarget;
 end;
 
 class operator TSafeComponentReference<T>.Equal(const a, b: TSafeComponentReference<T>): Boolean;
